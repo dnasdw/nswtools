@@ -143,7 +143,7 @@ int UMain(int argc, UChar* argv[])
 	}
 	vector<string>::iterator itLine = remove_if(vTxt.begin(), vTxt.end(), empty);
 	vTxt.erase(itLine, vTxt.end());
-	if (vTxt.empty())
+	if (vTxt.empty() && sInputElfFileName == sOutputElfFileName)
 	{
 		return 0;
 	}
@@ -177,11 +177,14 @@ int UMain(int argc, UChar* argv[])
 		// TODO UPrintf Error
 		return 1;
 	}
-	if (!patchElf(vTxt, pElf, uElfSize))
+	if (!vTxt.empty())
 	{
-		delete[] pElf;
-		// TODO UPrintf Error
-		return 1;
+		if (!patchElf(vTxt, pElf, uElfSize))
+		{
+			delete[] pElf;
+			// TODO UPrintf Error
+			return 1;
+		}
 	}
 	fp = UFopen(sOutputElfFileName.c_str(), USTR("wb"), false);
 	if (fp == nullptr)
