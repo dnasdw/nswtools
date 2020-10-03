@@ -1,103 +1,6 @@
 #include <sdw.h>
-
-string trim(const string& a_sLine)
-{
-	string sTrimmed = a_sLine;
-	string::size_type uPos = sTrimmed.find_first_not_of("\t\n\v\f\r \x85\xA0");
-	if (uPos == string::npos)
-	{
-		return "";
-	}
-	sTrimmed.erase(0, uPos);
-	uPos = sTrimmed.find_last_not_of("\t\n\v\f\r \x85\xA0");
-	if (uPos != string::npos)
-	{
-		sTrimmed.erase(uPos + 1);
-	}
-	return sTrimmed;
-}
-
-bool empty(const string& a_sLine)
-{
-	return trim(a_sLine).empty();
-}
-
-bool patchElf(const vector<string>& a_vTxt, u8* a_pElf, u32 a_uElfSize)
-{
-	const u32 uOffsetOffset = 0x48;
-	u32 uBaseOffset = *reinterpret_cast<u32*>(a_pElf + uOffsetOffset);
-	bool bHasOffset = false;
-	bool bHasValue = false;
-	u32 uOffset = 0;
-	u32 uValue = 0;
-	for (vector<string>::const_iterator it = a_vTxt.begin(); it != a_vTxt.end(); ++it)
-	{
-		const string& sLine = *it;
-		vector<string> vLine = Split(sLine, " ");
-		if (vLine.size() != 3)
-		{
-			// TODO UPrintf Error
-			return false;
-		}
-		u32 uCode[3] = { SToU32(vLine[0], 16), SToU32(vLine[1], 16), SToU32(vLine[2], 16) };
-		if ((uCode[0] & 0xFFFF0000) == 0x04070000)
-		{
-			if (bHasOffset || bHasValue)
-			{
-				// TODO UPrintf Error
-				return false;
-			}
-			bHasOffset = true;
-			bHasValue = true;
-			uOffset = uBaseOffset + uCode[1];
-			uValue = uCode[2];
-		}
-		else if ((uCode[0] & 0xFFFF0000) == 0x40070000)
-		{
-			if (bHasOffset || bHasValue)
-			{
-				// TODO UPrintf Error
-				return false;
-			}
-			bHasOffset = true;
-			uOffset = uBaseOffset + uCode[2];
-		}
-		else if ((uCode[0] & 0xFFFF0000) == 0x640F0000)
-		{
-			if (!bHasOffset || bHasValue)
-			{
-				// TODO UPrintf Error
-				return false;
-			}
-			bHasValue = true;
-			uValue = uCode[2];
-		}
-		else
-		{
-			// TODO UPrintf Error
-			return false;
-		}
-		if (bHasOffset && bHasValue)
-		{
-			if (uOffset + 4 > a_uElfSize)
-			{
-				// TODO UPrintf Error
-				return false;
-			}
-			*reinterpret_cast<u32*>(a_pElf + uOffset) = uValue;
-			bHasOffset = false;
-			bHasValue = false;
-			uOffset = 0;
-			uValue = 0;
-		}
-	}
-	if (bHasOffset || bHasValue)
-	{
-		// TODO UPrintf Error
-		return false;
-	}
-	return true;
-}
+#include "../common/patch.h"
+#include "../common/string.h"
 
 int UMain(int argc, UChar* argv[])
 {
@@ -167,10 +70,6 @@ int UMain(int argc, UChar* argv[])
 	fread(pElf, 1, uElfSize, fp);
 	fclose(fp);
 	u32 uBaseOffset = *reinterpret_cast<u32*>(pElf + uOffsetOffset);
-	if (uBaseOffset != 0x788)
-	{
-		// TODO UPrintf Warning
-	}
 	if (uBaseOffset >= uElfSize)
 	{
 		delete[] pElf;
@@ -179,7 +78,7 @@ int UMain(int argc, UChar* argv[])
 	}
 	if (!vTxt.empty())
 	{
-		if (!patchElf(vTxt, pElf, uElfSize))
+		if (!patchCode(vTxt, pElf + uBaseOffset, uElfSize - uBaseOffset))
 		{
 			delete[] pElf;
 			// TODO UPrintf Error
