@@ -39,10 +39,6 @@ int UMain(int argc, UChar* argv[])
 	fread(pElf, 1, uElfSize, fp);
 	fclose(fp);
 	u32 uBaseOffset = *reinterpret_cast<u32*>(pElf + uOffsetOffset);
-	if (uBaseOffset != 0x788)
-	{
-		// TODO UPrintf Warning
-	}
 	if (uBaseOffset >= uElfSize)
 	{
 		delete[] pElf;
